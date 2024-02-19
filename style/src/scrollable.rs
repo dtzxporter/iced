@@ -52,4 +52,7 @@ pub trait StyleSheet {
     fn dragging(&self, style: &Self::Style) -> Appearance {
         self.hovered(style, true)
     }
+
+    /// Produces the [`Appearance`] of a scrollable when it is disabled.
+    fn disabled(&self, style: &Self::Style) -> Appearance;
 }
