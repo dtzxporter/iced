@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - `extend` and `from_vec` methods for `Column` and `Row`. [#2264](https://github.com/iced-rs/iced/pull/2264)
+- `PartialOrd`, `Ord`, and `Hash` implementations for `keyboard::Modifiers`. [#2270](https://github.com/iced-rs/iced/pull/2270)
 
 ### Fixed
 - Black images when using OpenGL backend in `iced_wgpu`. [#2259](https://github.com/iced-rs/iced/pull/2259)
 - Documentation for `horizontal_space` and `vertical_space` helpers. [#2265](https://github.com/iced-rs/iced/pull/2265)
+- WebAssembly platform. [#2271](https://github.com/iced-rs/iced/pull/2271)
+- Decouple `Key` from `keyboard::Modifiers` and apply them to `text` in `KeyboardInput`. [#2238](https://github.com/iced-rs/iced/pull/2238)
 
 Many thanks to...
 
 - @PolyMeilex
 - @rizzen-yazston
+- @wash2
 
 ## [0.12.0] - 2024-02-15
 ### Added
