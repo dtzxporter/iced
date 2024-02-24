@@ -1439,7 +1439,8 @@ impl Scrollbars {
                 height: (bounds.height - x_scrollbar_height).max(0.0),
             };
 
-            let ratio = bounds.height / content_bounds.height.max(bounds.height);
+            let ratio =
+                bounds.height / content_bounds.height.max(bounds.height);
             // min height for easier grabbing with super tall content
             let scroller_height = (scrollbar_bounds.height * ratio).max(2.0);
             let scroller_offset =
