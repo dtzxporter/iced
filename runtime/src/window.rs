@@ -101,6 +101,17 @@ pub fn minimize<Message>(id: Id, minimized: bool) -> Command<Message> {
     Command::single(command::Action::Window(Action::Minimize(id, minimized)))
 }
 
+/// Fetches the current window position in logical coordinates.
+pub fn fetch_position<Message>(
+    id: Id,
+    f: impl FnOnce(Option<Point>) -> Message + 'static,
+) -> Command<Message> {
+    Command::single(command::Action::Window(Action::FetchPosition(
+        id,
+        Box::new(f),
+    )))
+}
+
 /// Moves the window to the given logical coordinates.
 pub fn move_to<Message>(id: Id, position: Point) -> Command<Message> {
     Command::single(command::Action::Window(Action::Move(id, position)))
@@ -158,6 +169,13 @@ pub fn gain_focus<Message>(id: Id) -> Command<Message> {
 /// Changes the window [`Level`].
 pub fn change_level<Message>(id: Id, level: Level) -> Command<Message> {
     Command::single(command::Action::Window(Action::ChangeLevel(id, level)))
+}
+
+/// Show the [system menu] at cursor position.
+///
+/// [system menu]: https://en.wikipedia.org/wiki/Common_menus_in_Microsoft_Windows#System_menu
+pub fn show_system_menu<Message>(id: Id) -> Command<Message> {
+    Command::single(command::Action::Window(Action::ShowSystemMenu(id)))
 }
 
 /// Fetches an identifier unique to the window, provided by the underlying windowing system. This is

@@ -1,7 +1,7 @@
 //! Convert [`winit`] types into [`iced_runtime`] types, and viceversa.
 //!
 //! [`winit`]: https://github.com/rust-windowing/winit
-//! [`iced_runtime`]: https://github.com/iced-rs/iced/tree/0.10/runtime
+//! [`iced_runtime`]: https://github.com/iced-rs/iced/tree/0.12/runtime
 use crate::core::keyboard;
 use crate::core::mouse;
 use crate::core::touch;
@@ -195,17 +195,40 @@ pub fn window_event(
                 }))
             }
         },
-        WindowEvent::KeyboardInput {
-            event:
-                winit::event::KeyEvent {
-                    logical_key,
-                    state,
-                    text,
-                    location,
-                    ..
-                },
-            ..
-        } => Some(Event::Keyboard({
+        WindowEvent::KeyboardInput { event, .. } => Some(Event::Keyboard({
+            let logical_key = {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+                    event.key_without_modifiers()
+                }
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    // TODO: Fix inconsistent API on Wasm
+                    event.logical_key
+                }
+            };
+
+            let text = {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    use crate::core::SmolStr;
+                    use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+
+                    event.text_with_all_modifiers().map(SmolStr::new)
+                }
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    // TODO: Fix inconsistent API on Wasm
+                    event.text
+                }
+            };
+
+            let winit::event::KeyEvent {
+                state, location, ..
+            } = event;
             let key = key(logical_key);
             let modifiers = self::modifiers(modifiers);
 
@@ -392,7 +415,7 @@ pub fn mouse_interaction(
 /// Converts a `MouseButton` from [`winit`] to an [`iced`] mouse button.
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
-/// [`iced`]: https://github.com/iced-rs/iced/tree/0.10
+/// [`iced`]: https://github.com/iced-rs/iced/tree/0.12
 pub fn mouse_button(mouse_button: winit::event::MouseButton) -> mouse::Button {
     match mouse_button {
         winit::event::MouseButton::Left => mouse::Button::Left,
@@ -408,7 +431,7 @@ pub fn mouse_button(mouse_button: winit::event::MouseButton) -> mouse::Button {
 /// state.
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
-/// [`iced`]: https://github.com/iced-rs/iced/tree/0.10
+/// [`iced`]: https://github.com/iced-rs/iced/tree/0.12
 pub fn modifiers(
     modifiers: winit::keyboard::ModifiersState,
 ) -> keyboard::Modifiers {
@@ -435,7 +458,7 @@ pub fn cursor_position(
 /// Converts a `Touch` from [`winit`] to an [`iced`] touch event.
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
-/// [`iced`]: https://github.com/iced-rs/iced/tree/0.10
+/// [`iced`]: https://github.com/iced-rs/iced/tree/0.12
 pub fn touch_event(
     touch: winit::event::Touch,
     scale_factor: f64,
@@ -466,7 +489,7 @@ pub fn touch_event(
 /// Converts a `VirtualKeyCode` from [`winit`] to an [`iced`] key code.
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
-/// [`iced`]: https://github.com/iced-rs/iced/tree/0.10
+/// [`iced`]: https://github.com/iced-rs/iced/tree/0.12
 pub fn key(key: winit::keyboard::Key) -> keyboard::Key {
     use keyboard::key::Named;
     use winit::keyboard::NamedKey;

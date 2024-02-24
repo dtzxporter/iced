@@ -6,10 +6,11 @@ pub use state::State;
 
 use crate::conversion;
 use crate::core;
+use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::widget::operation;
 use crate::core::window;
-use crate::core::Size;
+use crate::core::{Point, Size};
 use crate::futures::futures::channel::mpsc;
 use crate::futures::futures::{task, Future, StreamExt};
 use crate::futures::{Executor, Runtime, Subscription};
@@ -904,15 +905,15 @@ fn run_command<A, C, E>(
                 runtime.run(Box::pin(stream));
             }
             command::Action::Clipboard(action) => match action {
-                clipboard::Action::Read(tag) => {
-                    let message = tag(clipboard.read());
+                clipboard::Action::Read(tag, kind) => {
+                    let message = tag(clipboard.read(kind));
 
                     proxy
                         .send_event(message)
                         .expect("Send message to event loop");
                 }
-                clipboard::Action::Write(contents) => {
-                    clipboard.write(contents);
+                clipboard::Action::Write(contents, kind) => {
+                    clipboard.write(kind, contents);
                 }
             },
             command::Action::Window(action) => match action {
@@ -992,6 +993,25 @@ fn run_command<A, C, E>(
                         window.raw.set_minimized(minimized);
                     }
                 }
+                window::Action::FetchPosition(id, callback) => {
+                    if let Some(window) = window_manager.get_mut(id) {
+                        let position = window
+                            .raw
+                            .inner_position()
+                            .map(|position| {
+                                let position = position.to_logical::<f32>(
+                                    window.raw.scale_factor(),
+                                );
+
+                                Point::new(position.x, position.y)
+                            })
+                            .ok();
+
+                        proxy
+                            .send_event(callback(position))
+                            .expect("Send message to event loop");
+                    }
+                }
                 window::Action::Move(id, position) => {
                     if let Some(window) = window_manager.get_mut(id) {
                         window.raw.set_outer_position(
@@ -1056,6 +1076,20 @@ fn run_command<A, C, E>(
                         window
                             .raw
                             .set_window_level(conversion::window_level(level));
+                    }
+                }
+                window::Action::ShowSystemMenu(id) => {
+                    if let Some(window) = window_manager.get_mut(id) {
+                        if let mouse::Cursor::Available(point) =
+                            window.state.cursor()
+                        {
+                            window.raw.show_window_menu(
+                                winit::dpi::LogicalPosition {
+                                    x: point.x,
+                                    y: point.y,
+                                },
+                            );
+                        }
                     }
                 }
                 window::Action::FetchId(id, tag) => {

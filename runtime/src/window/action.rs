@@ -38,6 +38,8 @@ pub enum Action<T> {
     FetchMinimized(Id, Box<dyn FnOnce(Option<bool>) -> T + 'static>),
     /// Set the window to minimized or back
     Minimize(Id, bool),
+    /// Fetch the current logical coordinates of the window.
+    FetchPosition(Id, Box<dyn FnOnce(Option<Point>) -> T + 'static>),
     /// Move the window to the given logical coordinates.
     ///
     /// Unsupported on Wayland.
@@ -81,6 +83,11 @@ pub enum Action<T> {
     GainFocus(Id),
     /// Change the window [`Level`].
     ChangeLevel(Id, Level),
+    /// Show the system menu at cursor position.
+    ///
+    /// ## Platform-specific
+    /// Android / iOS / macOS / Orbital / Web / X11: Unsupported.
+    ShowSystemMenu(Id),
     /// Fetch the raw identifier unique to the window.
     FetchId(Id, Box<dyn FnOnce(u64) -> T + 'static>),
     /// Change the window [`Icon`].
@@ -129,6 +136,9 @@ impl<T> Action<T> {
                 Action::FetchMinimized(id, Box::new(move |s| f(o(s))))
             }
             Self::Minimize(id, minimized) => Action::Minimize(id, minimized),
+            Self::FetchPosition(id, o) => {
+                Action::FetchPosition(id, Box::new(move |s| f(o(s))))
+            }
             Self::Move(id, position) => Action::Move(id, position),
             Self::ChangeMode(id, mode) => Action::ChangeMode(id, mode),
             Self::FetchMode(id, o) => {
@@ -141,6 +151,7 @@ impl<T> Action<T> {
             }
             Self::GainFocus(id) => Action::GainFocus(id),
             Self::ChangeLevel(id, level) => Action::ChangeLevel(id, level),
+            Self::ShowSystemMenu(id) => Action::ShowSystemMenu(id),
             Self::FetchId(id, o) => {
                 Action::FetchId(id, Box::new(move |s| f(o(s))))
             }
@@ -180,6 +191,9 @@ impl<T> fmt::Debug for Action<T> {
             Self::Minimize(id, minimized) => {
                 write!(f, "Action::Minimize({id:?}, {minimized}")
             }
+            Self::FetchPosition(id, _) => {
+                write!(f, "Action::FetchPosition({id:?})")
+            }
             Self::Move(id, position) => {
                 write!(f, "Action::Move({id:?}, {position})")
             }
@@ -199,6 +213,9 @@ impl<T> fmt::Debug for Action<T> {
             Self::GainFocus(id) => write!(f, "Action::GainFocus({id:?})"),
             Self::ChangeLevel(id, level) => {
                 write!(f, "Action::ChangeLevel({id:?}, {level:?})")
+            }
+            Self::ShowSystemMenu(id) => {
+                write!(f, "Action::ShowSystemMenu({id:?})")
             }
             Self::FetchId(id, _) => write!(f, "Action::FetchId({id:?})"),
             Self::ChangeIcon(id, _icon) => {

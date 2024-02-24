@@ -12,6 +12,7 @@ use crate::menu;
 use crate::pane_grid;
 use crate::pick_list;
 use crate::progress_bar;
+use crate::qr_code;
 use crate::radio;
 use crate::rule;
 use crate::scrollable;
@@ -47,6 +48,32 @@ pub enum Theme {
     GruvboxLight,
     /// The built-in Gruvbox Dark variant.
     GruvboxDark,
+    /// The built-in Catppuccin Latte variant.
+    CatppuccinLatte,
+    /// The built-in Catppuccin Frappé variant.
+    CatppuccinFrappe,
+    /// The built-in Catppuccin Macchiato variant.
+    CatppuccinMacchiato,
+    /// The built-in Catppuccin Mocha variant.
+    CatppuccinMocha,
+    /// The built-in Tokyo Night variant.
+    TokyoNight,
+    /// The built-in Tokyo Night Storm variant.
+    TokyoNightStorm,
+    /// The built-in Tokyo Night Light variant.
+    TokyoNightLight,
+    /// The built-in Kanagawa Wave variant.
+    KanagawaWave,
+    /// The built-in Kanagawa Dragon variant.
+    KanagawaDragon,
+    /// The built-in Kanagawa Lotus variant.
+    KanagawaLotus,
+    /// The built-in Moonfly variant.
+    Moonfly,
+    /// The built-in Nightfly variant.
+    Nightfly,
+    /// The built-in Oxocarbon variant.
+    Oxocarbon,
     /// A [`Theme`] that uses a [`Custom`] palette.
     Custom(Arc<Custom>),
 }
@@ -62,6 +89,19 @@ impl Theme {
         Self::SolarizedDark,
         Self::GruvboxLight,
         Self::GruvboxDark,
+        Self::CatppuccinLatte,
+        Self::CatppuccinFrappe,
+        Self::CatppuccinMacchiato,
+        Self::CatppuccinMocha,
+        Self::TokyoNight,
+        Self::TokyoNightStorm,
+        Self::TokyoNightLight,
+        Self::KanagawaWave,
+        Self::KanagawaDragon,
+        Self::KanagawaLotus,
+        Self::Moonfly,
+        Self::Nightfly,
+        Self::Oxocarbon,
     ];
 
     /// Creates a new custom [`Theme`] from the given [`Palette`].
@@ -90,6 +130,19 @@ impl Theme {
             Self::SolarizedDark => Palette::SOLARIZED_DARK,
             Self::GruvboxLight => Palette::GRUVBOX_LIGHT,
             Self::GruvboxDark => Palette::GRUVBOX_DARK,
+            Self::CatppuccinLatte => Palette::CATPPUCCIN_LATTE,
+            Self::CatppuccinFrappe => Palette::CATPPUCCIN_FRAPPE,
+            Self::CatppuccinMacchiato => Palette::CATPPUCCIN_MACCHIATO,
+            Self::CatppuccinMocha => Palette::CATPPUCCIN_MOCHA,
+            Self::TokyoNight => Palette::TOKYO_NIGHT,
+            Self::TokyoNightStorm => Palette::TOKYO_NIGHT_STORM,
+            Self::TokyoNightLight => Palette::TOKYO_NIGHT_LIGHT,
+            Self::KanagawaWave => Palette::KANAGAWA_WAVE,
+            Self::KanagawaDragon => Palette::KANAGAWA_DRAGON,
+            Self::KanagawaLotus => Palette::KANAGAWA_LOTUS,
+            Self::Moonfly => Palette::MOONFLY,
+            Self::Nightfly => Palette::NIGHTFLY,
+            Self::Oxocarbon => Palette::OXOCARBON,
             Self::Custom(custom) => custom.palette,
         }
     }
@@ -105,6 +158,21 @@ impl Theme {
             Self::SolarizedDark => &palette::EXTENDED_SOLARIZED_DARK,
             Self::GruvboxLight => &palette::EXTENDED_GRUVBOX_LIGHT,
             Self::GruvboxDark => &palette::EXTENDED_GRUVBOX_DARK,
+            Self::CatppuccinLatte => &palette::EXTENDED_CATPPUCCIN_LATTE,
+            Self::CatppuccinFrappe => &palette::EXTENDED_CATPPUCCIN_FRAPPE,
+            Self::CatppuccinMacchiato => {
+                &palette::EXTENDED_CATPPUCCIN_MACCHIATO
+            }
+            Self::CatppuccinMocha => &palette::EXTENDED_CATPPUCCIN_MOCHA,
+            Self::TokyoNight => &palette::EXTENDED_TOKYO_NIGHT,
+            Self::TokyoNightStorm => &palette::EXTENDED_TOKYO_NIGHT_STORM,
+            Self::TokyoNightLight => &palette::EXTENDED_TOKYO_NIGHT_LIGHT,
+            Self::KanagawaWave => &palette::EXTENDED_KANAGAWA_WAVE,
+            Self::KanagawaDragon => &palette::EXTENDED_KANAGAWA_DRAGON,
+            Self::KanagawaLotus => &palette::EXTENDED_KANAGAWA_LOTUS,
+            Self::Moonfly => &palette::EXTENDED_MOONFLY,
+            Self::Nightfly => &palette::EXTENDED_NIGHTFLY,
+            Self::Oxocarbon => &palette::EXTENDED_OXOCARBON,
             Self::Custom(custom) => &custom.extended,
         }
     }
@@ -121,6 +189,19 @@ impl fmt::Display for Theme {
             Self::SolarizedDark => write!(f, "Solarized Dark"),
             Self::GruvboxLight => write!(f, "Gruvbox Light"),
             Self::GruvboxDark => write!(f, "Gruvbox Dark"),
+            Self::CatppuccinLatte => write!(f, "Catppuccin Latte"),
+            Self::CatppuccinFrappe => write!(f, "Catppuccin Frappé"),
+            Self::CatppuccinMacchiato => write!(f, "Catppuccin Macchiato"),
+            Self::CatppuccinMocha => write!(f, "Catppuccin Mocha"),
+            Self::TokyoNight => write!(f, "Tokyo Night"),
+            Self::TokyoNightStorm => write!(f, "Tokyo Night Storm"),
+            Self::TokyoNightLight => write!(f, "Tokyo Night Light"),
+            Self::KanagawaWave => write!(f, "Kanagawa Wave"),
+            Self::KanagawaDragon => write!(f, "Kanagawa Dragon"),
+            Self::KanagawaLotus => write!(f, "Kanagawa Lotus"),
+            Self::Moonfly => write!(f, "Moonfly"),
+            Self::Nightfly => write!(f, "Nightfly"),
+            Self::Oxocarbon => write!(f, "Oxocarbon"),
             Self::Custom(custom) => custom.fmt(f),
         }
     }
@@ -171,6 +252,15 @@ pub enum Application {
     Custom(Box<dyn application::StyleSheet<Style = Theme>>),
 }
 
+impl Application {
+    /// Creates a custom [`Application`] style.
+    pub fn custom(
+        custom: impl application::StyleSheet<Style = Theme> + 'static,
+    ) -> Self {
+        Self::Custom(Box::new(custom))
+    }
+}
+
 impl application::StyleSheet for Theme {
     type Style = Application;
 
@@ -192,14 +282,6 @@ impl<T: Fn(&Theme) -> application::Appearance> application::StyleSheet for T {
 
     fn appearance(&self, style: &Self::Style) -> application::Appearance {
         (self)(style)
-    }
-}
-
-impl<T: Fn(&Theme) -> application::Appearance + 'static> From<T>
-    for Application
-{
-    fn from(f: T) -> Self {
-        Self::Custom(Box::new(f))
     }
 }
 
@@ -956,6 +1038,46 @@ impl<T: Fn(&Theme) -> progress_bar::Appearance> progress_bar::StyleSheet for T {
     }
 }
 
+/// The style of a QR Code.
+#[derive(Default)]
+pub enum QRCode {
+    /// The default style.
+    #[default]
+    Default,
+    /// A custom style.
+    Custom(Box<dyn qr_code::StyleSheet<Style = Theme>>),
+}
+
+impl<T: Fn(&Theme) -> qr_code::Appearance + 'static> From<T> for QRCode {
+    fn from(f: T) -> Self {
+        Self::Custom(Box::new(f))
+    }
+}
+
+impl qr_code::StyleSheet for Theme {
+    type Style = QRCode;
+
+    fn appearance(&self, style: &Self::Style) -> qr_code::Appearance {
+        let palette = self.palette();
+
+        match style {
+            QRCode::Default => qr_code::Appearance {
+                cell: palette.text,
+                background: palette.background,
+            },
+            QRCode::Custom(custom) => custom.appearance(self),
+        }
+    }
+}
+
+impl<T: Fn(&Theme) -> qr_code::Appearance> qr_code::StyleSheet for T {
+    type Style = Theme;
+
+    fn appearance(&self, style: &Self::Style) -> qr_code::Appearance {
+        (self)(style)
+    }
+}
+
 /// The style of a rule.
 #[derive(Default)]
 pub enum Rule {
@@ -1066,18 +1188,22 @@ impl Scrollable {
 impl scrollable::StyleSheet for Theme {
     type Style = Scrollable;
 
-    fn active(&self, style: &Self::Style) -> scrollable::Scrollbar {
+    fn active(&self, style: &Self::Style) -> scrollable::Appearance {
         match style {
             Scrollable::Default => {
                 let palette = self.extended_palette();
 
-                scrollable::Scrollbar {
-                    background: Some(palette.background.weak.color.into()),
-                    border: Border::with_radius(2),
-                    scroller: scrollable::Scroller {
-                        color: palette.background.strong.color,
+                scrollable::Appearance {
+                    container: container::Appearance::default(),
+                    scrollbar: scrollable::Scrollbar {
+                        background: Some(palette.background.weak.color.into()),
                         border: Border::with_radius(2),
+                        scroller: scrollable::Scroller {
+                            color: palette.background.strong.color,
+                            border: Border::with_radius(2),
+                        },
                     },
+                    gap: None,
                 }
             }
             Scrollable::Custom(custom) => custom.active(self),
@@ -1088,19 +1214,24 @@ impl scrollable::StyleSheet for Theme {
         &self,
         style: &Self::Style,
         is_mouse_over_scrollbar: bool,
-    ) -> scrollable::Scrollbar {
+    ) -> scrollable::Appearance {
         match style {
             Scrollable::Default => {
                 if is_mouse_over_scrollbar {
                     let palette = self.extended_palette();
 
-                    scrollable::Scrollbar {
-                        background: Some(palette.background.weak.color.into()),
-                        border: Border::with_radius(2),
-                        scroller: scrollable::Scroller {
-                            color: palette.primary.strong.color,
+                    scrollable::Appearance {
+                        scrollbar: scrollable::Scrollbar {
+                            background: Some(
+                                palette.background.weak.color.into(),
+                            ),
                             border: Border::with_radius(2),
+                            scroller: scrollable::Scroller {
+                                color: palette.primary.strong.color,
+                                border: Border::with_radius(2),
+                            },
                         },
+                        ..self.active(style)
                     }
                 } else {
                     self.active(style)
@@ -1112,40 +1243,10 @@ impl scrollable::StyleSheet for Theme {
         }
     }
 
-    fn dragging(&self, style: &Self::Style) -> scrollable::Scrollbar {
+    fn dragging(&self, style: &Self::Style) -> scrollable::Appearance {
         match style {
             Scrollable::Default => self.hovered(style, true),
             Scrollable::Custom(custom) => custom.dragging(self),
-        }
-    }
-
-    fn active_horizontal(&self, style: &Self::Style) -> scrollable::Scrollbar {
-        match style {
-            Scrollable::Default => self.active(style),
-            Scrollable::Custom(custom) => custom.active_horizontal(self),
-        }
-    }
-
-    fn hovered_horizontal(
-        &self,
-        style: &Self::Style,
-        is_mouse_over_scrollbar: bool,
-    ) -> scrollable::Scrollbar {
-        match style {
-            Scrollable::Default => self.hovered(style, is_mouse_over_scrollbar),
-            Scrollable::Custom(custom) => {
-                custom.hovered_horizontal(self, is_mouse_over_scrollbar)
-            }
-        }
-    }
-
-    fn dragging_horizontal(
-        &self,
-        style: &Self::Style,
-    ) -> scrollable::Scrollbar {
-        match style {
-            Scrollable::Default => self.hovered_horizontal(style, true),
-            Scrollable::Custom(custom) => custom.dragging_horizontal(self),
         }
     }
 }

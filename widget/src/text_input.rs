@@ -12,6 +12,7 @@ pub use value::Value;
 use editor::Editor;
 
 use crate::core::alignment;
+use crate::core::clipboard::{self, Clipboard};
 use crate::core::event::{self, Event};
 use crate::core::keyboard;
 use crate::core::keyboard::key;
@@ -26,8 +27,8 @@ use crate::core::widget::operation::{self, Operation};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Clipboard, Element, Layout, Length, Padding, Pixels, Point, Rectangle,
-    Shell, Size, Vector, Widget,
+    Element, Layout, Length, Padding, Pixels, Point, Rectangle, Shell, Size,
+    Vector, Widget,
 };
 use crate::runtime::Command;
 
@@ -121,8 +122,8 @@ where
     }
 
     /// Converts the [`TextInput`] into a secure password input.
-    pub fn password(mut self) -> Self {
-        self.is_secure = true;
+    pub fn secure(mut self, is_secure: bool) -> Self {
+        self.is_secure = is_secure;
         self
     }
 
@@ -761,6 +762,27 @@ where
                 let modifiers = state.keyboard_modifiers;
                 focus.updated_at = Instant::now();
 
+                if let Some(text) = text {
+                    state.is_pasting = None;
+
+                    let c = text.chars().next().unwrap_or_default();
+
+                    if !c.is_control() {
+                        let mut editor = Editor::new(value, &mut state.cursor);
+
+                        editor.insert(c);
+
+                        let message = (on_input)(editor.contents());
+                        shell.publish(message);
+
+                        focus.updated_at = Instant::now();
+
+                        update_cache(state, value);
+
+                        return event::Status::Captured;
+                    }
+                }
+
                 match key.as_ref() {
                     keyboard::Key::Named(key::Named::Enter) => {
                         if let Some(on_submit) = on_submit.clone() {
@@ -864,8 +886,10 @@ where
                         if let Some((start, end)) =
                             state.cursor.selection(value)
                         {
-                            clipboard
-                                .write(value.select(start, end).to_string());
+                            clipboard.write(
+                                clipboard::Kind::Standard,
+                                value.select(start, end).to_string(),
+                            );
                         }
                     }
                     keyboard::Key::Character("x")
@@ -874,8 +898,10 @@ where
                         if let Some((start, end)) =
                             state.cursor.selection(value)
                         {
-                            clipboard
-                                .write(value.select(start, end).to_string());
+                            clipboard.write(
+                                clipboard::Kind::Standard,
+                                value.select(start, end).to_string(),
+                            );
                         }
 
                         let mut editor = Editor::new(value, &mut state.cursor);
@@ -894,7 +920,7 @@ where
                             Some(content) => content,
                             None => {
                                 let content: String = clipboard
-                                    .read()
+                                    .read(clipboard::Kind::Standard)
                                     .unwrap_or_default()
                                     .chars()
                                     .filter(|c| !c.is_control())
@@ -939,29 +965,7 @@ where
                     ) => {
                         return event::Status::Ignored;
                     }
-                    _ => {
-                        if let Some(text) = text {
-                            state.is_pasting = None;
-
-                            let c = text.chars().next().unwrap_or_default();
-
-                            if !c.is_control() {
-                                let mut editor =
-                                    Editor::new(value, &mut state.cursor);
-
-                                editor.insert(c);
-
-                                let message = (on_input)(editor.contents());
-                                shell.publish(message);
-
-                                focus.updated_at = Instant::now();
-
-                                update_cache(state, value);
-
-                                return event::Status::Captured;
-                            }
-                        }
-                    }
+                    _ => {}
                 }
 
                 return event::Status::Captured;
@@ -986,9 +990,9 @@ where
                 }
 
                 return event::Status::Captured;
-            } else {
-                state.is_pasting = None;
             }
+
+            state.is_pasting = None;
         }
         Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
             let state = state();
