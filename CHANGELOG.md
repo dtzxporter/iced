@@ -6,14 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `fetch_position` command in `window` module. [#2280](https://github.com/iced-rs/iced/pull/2280)
+
+Many thanks to...
+
+- @n1ght-hunter
+
+## [0.12.1] - 2024-02-22
+### Added
 - `extend` and `from_vec` methods for `Column` and `Row`. [#2264](https://github.com/iced-rs/iced/pull/2264)
 - `PartialOrd`, `Ord`, and `Hash` implementations for `keyboard::Modifiers`. [#2270](https://github.com/iced-rs/iced/pull/2270)
+- `clipboard` module in `advanced` module. [#2272](https://github.com/iced-rs/iced/pull/2272)
+- Default `disabled` style for `checkbox` and `hovered` style for `Svg`. [#2273](https://github.com/iced-rs/iced/pull/2273)
+- `From<u16>` and `From<i32>` implementations for `border::Radius`. [#2274](https://github.com/iced-rs/iced/pull/2274)
+- `size_hint` method for `Component` trait. [#2275](https://github.com/iced-rs/iced/pull/2275)
 
 ### Fixed
 - Black images when using OpenGL backend in `iced_wgpu`. [#2259](https://github.com/iced-rs/iced/pull/2259)
 - Documentation for `horizontal_space` and `vertical_space` helpers. [#2265](https://github.com/iced-rs/iced/pull/2265)
 - WebAssembly platform. [#2271](https://github.com/iced-rs/iced/pull/2271)
 - Decouple `Key` from `keyboard::Modifiers` and apply them to `text` in `KeyboardInput`. [#2238](https://github.com/iced-rs/iced/pull/2238)
+- Text insertion not being prioritized in `TextInput` and `TextEditor`. [#2278](https://github.com/iced-rs/iced/pull/2278)
+- `iced_tiny_skia` clipping line strokes. [#2282](https://github.com/iced-rs/iced/pull/2282)
 
 Many thanks to...
 
@@ -758,7 +772,8 @@ Many thanks to...
 ### Added
 - First release! :tada:
 
-[Unreleased]: https://github.com/iced-rs/iced/compare/0.12.0...HEAD
+[Unreleased]: https://github.com/iced-rs/iced/compare/0.12.1...HEAD
+[0.12.1]: https://github.com/iced-rs/iced/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/iced-rs/iced/compare/0.10.0...0.12.0
 [0.10.0]: https://github.com/iced-rs/iced/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/iced-rs/iced/compare/0.8.0...0.9.0
