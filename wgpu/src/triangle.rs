@@ -324,6 +324,7 @@ fn render<'a>(
                 label: Some("iced_wgpu.triangle.render_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: attachment,
+                    depth_slice: None,
                     resolve_target,
                     ops: wgpu::Operations {
                         load,

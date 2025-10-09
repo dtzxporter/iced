@@ -237,6 +237,7 @@ impl Renderer {
                 label: Some("iced_wgpu render pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: frame,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: match clear_color {
@@ -320,6 +321,7 @@ impl Renderer {
                         color_attachments: &[Some(
                             wgpu::RenderPassColorAttachment {
                                 view: frame,
+                                depth_slice: None,
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Load,
@@ -357,6 +359,7 @@ impl Renderer {
                         color_attachments: &[Some(
                             wgpu::RenderPassColorAttachment {
                                 view: frame,
+                                depth_slice: None,
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Load,
