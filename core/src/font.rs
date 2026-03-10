@@ -1,5 +1,5 @@
 //! Load and use fonts.
-use std::hash::Hash;
+use std::{hash::Hash, sync::Mutex};
 
 /// A font.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -40,11 +40,23 @@ impl Font {
 
     /// Creates a [`Font`] with the given [`Family::Name`] from a runtime string.
     ///
-    /// The name is interned in a global lock-free cache and never freed.
+    /// The name is interned in a global cache and never freed.
     /// For compile-time constants, prefer [`Font::with_name`].
     pub fn from_name(name: &str) -> Self {
+        static FONT_NAME_POOL: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
+
+        let mut font_pool = FONT_NAME_POOL.lock().unwrap();
+
+        let index = match font_pool.binary_search(&name) {
+            Ok(index) => index,
+            Err(index) => {
+                font_pool.insert(index, name.to_owned().leak());
+                index
+            }
+        };
+
         Font {
-            family: Family::Name(ustr::ustr(name).as_str()),
+            family: Family::Name(font_pool[index]),
             ..Self::DEFAULT
         }
     }
