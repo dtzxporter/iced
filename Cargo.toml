@@ -231,6 +231,7 @@ tokio = "1.0"
 tracing = "0.1"
 two-face = { version = "0.4", default-features = false, features = ["syntect-default-fancy"] }
 unicode-segmentation = "1.0"
+ustr = "1"
 url = "2.5"
 wasm-bindgen-futures = "0.4"
 wasmtimer = "0.4.2"

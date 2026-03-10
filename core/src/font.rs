@@ -37,6 +37,39 @@ impl Font {
             ..Self::DEFAULT
         }
     }
+
+    /// Creates a [`Font`] with the given [`Family::Name`] from a runtime string.
+    ///
+    /// The name is interned in a global lock-free cache and never freed.
+    /// For compile-time constants, prefer [`Font::with_name`].
+    pub fn from_name(name: &str) -> Self {
+        Font {
+            family: Family::Name(ustr::ustr(name).as_str()),
+            ..Self::DEFAULT
+        }
+    }
+}
+
+/// Creates a [`Font`] with the given [`Family::Name`] from a runtime string.
+///
+/// Shorthand for [`Font::from_name`].
+pub fn font(name: &str) -> Font {
+    Font::from_name(name)
+}
+
+impl From<&str> for Font {
+    fn from(name: &str) -> Self {
+        Font::from_name(name)
+    }
+}
+
+impl From<Option<&str>> for Font {
+    fn from(name: Option<&str>) -> Self {
+        match name {
+            Some(name) => Font::from_name(name),
+            None => Font::DEFAULT,
+        }
+    }
 }
 
 /// A font family.
