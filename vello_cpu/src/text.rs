@@ -209,7 +209,7 @@ fn draw(
                         image: vello_cpu::ImageSource::Pixmap(pixmap.clone()),
                         sampler: vello_cpu::peniko::ImageSampler::new()
                             // .with_alpha(opacity) // TODO: Uncomment once vello_cpu supports it
-                            .with_quality(vello_cpu::peniko::ImageQuality::Low),
+                            .with_quality(vello_cpu::peniko::ImageQuality::Medium),
                     },
                 ));
 
