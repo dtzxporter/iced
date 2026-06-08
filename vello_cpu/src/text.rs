@@ -200,16 +200,15 @@ fn draw(
                 font_system,
                 &mut swash,
             ) {
-                // TODO
-                let _opacity =
+                let opacity =
                     color.a * glyph.color_opt.map(|c| c.a() as f32 / 255.0).unwrap_or(1.0);
 
                 renderer.set_paint(vello_cpu::peniko::Brush::Image(
                     vello_cpu::peniko::ImageBrush {
                         image: vello_cpu::ImageSource::Pixmap(pixmap.clone()),
                         sampler: vello_cpu::peniko::ImageSampler::new()
-                            // .with_alpha(opacity) // TODO: Uncomment once vello_cpu supports it
-                            .with_quality(vello_cpu::peniko::ImageQuality::Medium),
+                            .with_quality(vello_cpu::peniko::ImageQuality::Medium)
+                            .with_alpha(opacity),
                     },
                 ));
 
