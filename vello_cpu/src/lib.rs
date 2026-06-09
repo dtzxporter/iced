@@ -20,7 +20,7 @@ use crate::core::backend;
 use crate::core::border;
 use crate::core::image;
 use crate::core::renderer;
-use crate::core::{Background, Color, Font, Gradient, Pixels, Rectangle, Size, Transformation};
+use crate::core::{Background, Color, Font, Gradient, Pixels, Rectangle, Transformation};
 use crate::graphics::compositor;
 use crate::graphics::mesh;
 use crate::graphics::text::{Editor, Paragraph};
@@ -212,6 +212,8 @@ impl Renderer {
                 }
             }
 
+            let layer_bounds = layer.bounds * viewport.scale_factor();
+
             for item in &layer.text {
                 for text in item.as_slice() {
                     match text {
@@ -225,9 +227,13 @@ impl Renderer {
                             let transformation =
                                 Transformation::scale(viewport.scale_factor()) * *transformation;
 
-                            renderer.push_clip_path(
-                                &into_rect(*clip_bounds * transformation).to_path(ACCURACY),
-                            );
+                            let Some(clip_bounds) =
+                                text_clip_bounds(layer_bounds, *clip_bounds, transformation)
+                            else {
+                                continue;
+                            };
+
+                            renderer.push_clip_path(&into_rect(clip_bounds).to_path(ACCURACY));
 
                             self.text.draw_paragraph(
                                 paragraph,
@@ -249,9 +255,13 @@ impl Renderer {
                             let transformation =
                                 Transformation::scale(viewport.scale_factor()) * *transformation;
 
-                            renderer.push_clip_path(
-                                &into_rect(*clip_bounds * transformation).to_path(ACCURACY),
-                            );
+                            let Some(clip_bounds) =
+                                text_clip_bounds(layer_bounds, *clip_bounds, transformation)
+                            else {
+                                continue;
+                            };
+
+                            renderer.push_clip_path(&into_rect(clip_bounds).to_path(ACCURACY));
 
                             self.text.draw_editor(
                                 editor,
@@ -280,8 +290,14 @@ impl Renderer {
                             let transformation = Transformation::scale(viewport.scale_factor())
                                 * item.transformation();
 
-                            let Some(clip_bounds) = (*clip_bounds * transformation)
-                                .intersection(&(layer.bounds * transformation))
+                            let layer_bounds = if is_finite(*clip_bounds) {
+                                layer.bounds * transformation
+                            } else {
+                                layer_bounds
+                            };
+
+                            let Some(clip_bounds) =
+                                text_clip_bounds(layer_bounds, *clip_bounds, transformation)
                             else {
                                 continue;
                             };
@@ -317,19 +333,13 @@ impl Renderer {
                             let transformation =
                                 Transformation::scale(viewport.scale_factor()) * *transformation;
 
-                            let (width, height) = buffer.size();
+                            let Some(clip_bounds) =
+                                text_clip_bounds(layer_bounds, raw.clip_bounds, transformation)
+                            else {
+                                continue;
+                            };
 
-                            let clip_bounds = Rectangle::new(
-                                raw.position,
-                                Size::new(
-                                    width.unwrap_or(layer.bounds.width),
-                                    height.unwrap_or(layer.bounds.height),
-                                ),
-                            );
-
-                            renderer.push_clip_path(
-                                &into_rect(clip_bounds * transformation).to_path(ACCURACY),
-                            );
+                            renderer.push_clip_path(&into_rect(clip_bounds).to_path(ACCURACY));
 
                             self.text.draw_raw(
                                 &buffer,
@@ -355,6 +365,29 @@ impl Renderer {
 
         self.text.trim_cache();
     }
+}
+
+fn text_clip_bounds(
+    layer_bounds: Rectangle,
+    clip_bounds: Rectangle,
+    transformation: Transformation,
+) -> Option<Rectangle> {
+    if !is_finite(layer_bounds) {
+        return None;
+    }
+
+    if !is_finite(clip_bounds) {
+        return Some(layer_bounds);
+    }
+
+    layer_bounds.intersection(&(clip_bounds * transformation))
+}
+
+fn is_finite(bounds: Rectangle) -> bool {
+    bounds.x.is_finite()
+        && bounds.y.is_finite()
+        && bounds.width.is_finite()
+        && bounds.height.is_finite()
 }
 
 fn into_color(Color { r, g, b, a }: Color) -> vello_cpu::color::AlphaColor<vello_cpu::color::Srgb> {
