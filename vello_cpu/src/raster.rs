@@ -1,5 +1,5 @@
 use crate::core::image as raster;
-use crate::core::{Color, Image, Rectangle, Size};
+use crate::core::{Image, Rectangle, Size};
 use crate::graphics;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -131,23 +131,28 @@ impl Cache {
                 }
             };
 
-            if image.width() == 0 || image.height() == 0 {
+            let width = image.width() as u16;
+            let height = image.height() as u16;
+
+            if width == 0 || height == 0 {
                 return Err(raster::Error::Empty);
             }
 
-            let mut buffer = vello_cpu::Pixmap::new(image.width() as u16, image.height() as u16);
+            let mut buffer = vello_cpu::Pixmap::new(width, height);
 
-            for (i, pixel) in image.pixels().enumerate() {
-                let [r, g, b, a] = pixel.0;
+            let src = image.as_raw();
+            let dst = buffer.data_as_u8_slice_mut();
 
-                let x = (i as u32 % image.width()) as u16;
-                let y = (i as u32 / image.width()) as u16;
+            for (src, dst) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+                let src: [u8; 4] = src.try_into().unwrap();
+                let dst: &mut [u8; 4] = dst.try_into().unwrap();
 
-                let color = crate::into_color(Color::from_rgba8(r, g, b, f32::from(a) / 255.0))
-                    .premultiply()
-                    .to_rgba8();
+                let [b, g, r, a] = src;
 
-                buffer.set_pixel(x, y, color);
+                dst[0] = ((r as u16 * a as u16 + 127) / 255) as u8;
+                dst[1] = ((g as u16 * a as u16 + 127) / 255) as u8;
+                dst[2] = ((b as u16 * a as u16 + 127) / 255) as u8;
+                dst[3] = a;
             }
 
             let _ = entry.insert(Some(Entry {
