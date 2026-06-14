@@ -203,9 +203,12 @@ fn draw(
                 let opacity =
                     color.a * glyph.color_opt.map(|c| c.a() as f32 / 255.0).unwrap_or(1.0);
 
+                let width = pixmap.width();
+                let height = pixmap.height();
+
                 renderer.set_paint(vello_cpu::peniko::Brush::Image(
                     vello_cpu::peniko::ImageBrush {
-                        image: vello_cpu::ImageSource::Pixmap(pixmap.clone()),
+                        image: vello_cpu::ImageSource::Pixmap(pixmap),
                         sampler: vello_cpu::peniko::ImageSampler::new()
                             .with_quality(vello_cpu::peniko::ImageQuality::Medium)
                             .with_alpha(opacity),
@@ -226,8 +229,8 @@ fn draw(
                 renderer.fill_rect(&crate::into_rect(Rectangle {
                     x: 0.0,
                     y: 0.0,
-                    width: f32::from(pixmap.width()),
-                    height: f32::from(pixmap.height()),
+                    width: f32::from(width),
+                    height: f32::from(height),
                 }));
 
                 renderer.reset_transform();
@@ -266,79 +269,86 @@ impl GlyphCache {
         color: Color,
         font_system: &mut cosmic_text::FontSystem,
         swash: &mut cosmic_text::SwashCache,
-    ) -> Option<(&Arc<vello_cpu::Pixmap>, cosmic_text::Placement)> {
+    ) -> Option<(Arc<vello_cpu::Pixmap>, cosmic_text::Placement)> {
         let color = crate::into_color(color).premultiply();
         let vello_cpu::color::PremulRgba8 { r, g, b, .. } = color.to_rgba8();
         let key = (cache_key, [r, g, b]);
 
-        if let hash_map::Entry::Vacant(entry) = self.entries.entry(key) {
-            // TODO: Outline support
-            let image = swash.get_image_uncached(font_system, cache_key)?;
+        match self.entries.entry(key) {
+            hash_map::Entry::Vacant(entry) => {
+                // TODO: Outline support
+                let image = swash.get_image_uncached(font_system, cache_key)?;
 
-            let width = image.placement.width as u16;
-            let height = image.placement.height as u16;
+                let width = image.placement.width as u16;
+                let height = image.placement.height as u16;
 
-            if width == 0 || height == 0 {
-                return None;
-            }
+                if width == 0 || height == 0 {
+                    return None;
+                }
 
-            let mut buffer = vello_cpu::Pixmap::new(width, height);
+                let mut buffer = vello_cpu::Pixmap::new(width, height);
 
-            match image.content {
-                cosmic_text::SwashContent::Mask => {
-                    // TODO: Blend alpha
-                    let mut i = 0;
+                match image.content {
+                    cosmic_text::SwashContent::Mask => {
+                        // TODO: Blend alpha
+                        let mut i = 0;
 
-                    for y in 0..height {
-                        for x in 0..width {
-                            buffer.set_pixel(
-                                x,
-                                y,
-                                color
-                                    .multiply_alpha(f32::from(image.data[i]) / 255.0)
+                        for y in 0..height {
+                            for x in 0..width {
+                                buffer.set_pixel(
+                                    x,
+                                    y,
+                                    color
+                                        .multiply_alpha(f32::from(image.data[i]) / 255.0)
+                                        .to_rgba8(),
+                                );
+
+                                i += 1;
+                            }
+                        }
+                    }
+                    cosmic_text::SwashContent::Color => {
+                        let mut i = 0;
+
+                        for y in 0..height {
+                            for x in 0..width {
+                                // TODO: Blend alpha
+                                buffer.set_pixel(
+                                    x,
+                                    y,
+                                    vello_cpu::color::AlphaColor::from_rgba8(
+                                        image.data[i + 2],
+                                        image.data[i + 1],
+                                        image.data[i],
+                                        image.data[i + 3],
+                                    )
+                                    .premultiply()
                                     .to_rgba8(),
-                            );
+                                );
 
-                            i += 1;
+                                i += 4;
+                            }
                         }
                     }
-                }
-                cosmic_text::SwashContent::Color => {
-                    let mut i = 0;
-
-                    for y in 0..height {
-                        for x in 0..width {
-                            // TODO: Blend alpha
-                            buffer.set_pixel(
-                                x,
-                                y,
-                                vello_cpu::color::AlphaColor::from_rgba8(
-                                    image.data[i + 2],
-                                    image.data[i + 1],
-                                    image.data[i],
-                                    image.data[i + 3],
-                                )
-                                .premultiply()
-                                .to_rgba8(),
-                            );
-
-                            i += 4;
-                        }
+                    cosmic_text::SwashContent::SubpixelMask => {
+                        // TODO
                     }
                 }
-                cosmic_text::SwashContent::SubpixelMask => {
-                    // TODO
-                }
+
+                let buffer = Arc::new(buffer);
+
+                let _ = entry.insert((buffer.clone(), image.placement));
+                let _ = self.recently_used.insert(key);
+
+                Some((buffer, image.placement))
             }
+            hash_map::Entry::Occupied(entry) => {
+                let _ = self.recently_used.insert(key);
+                let (buffer, placement) = entry.get();
 
-            let _ = entry.insert((Arc::new(buffer), image.placement));
+                Some((buffer.clone(), *placement))
+            }
         }
-
-        let _ = self.recently_used.insert(key);
-
-        self.entries
-            .get(&key)
-            .map(|(buffer, placement)| (buffer, *placement))
     }
 
     pub fn trim(&mut self) {
