@@ -282,10 +282,6 @@ impl GlyphCache {
                 let width = image.placement.width as u16;
                 let height = image.placement.height as u16;
 
-                if width == 0 || height == 0 {
-                    return None;
-                }
-
                 let mut buffer = vello_cpu::Pixmap::new(width, height);
 
                 match image.content {
