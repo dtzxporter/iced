@@ -121,56 +121,63 @@ impl Cache {
     ) -> Result<Arc<vello_cpu::Pixmap>, raster::Error> {
         let id = handle.id();
 
-        if let hash_map::Entry::Vacant(entry) = self.entries.entry(id) {
-            let image = match graphics::image::load(handle) {
-                Ok(image) => image,
-                Err(error) => {
-                    let _ = entry.insert(None);
+        match self.entries.entry(id) {
+            hash_map::Entry::Vacant(entry) => {
+                let image = match graphics::image::load(handle) {
+                    Ok(image) => image,
+                    Err(error) => {
+                        let _ = entry.insert(None);
 
-                    return Err(error);
+                        return Err(error);
+                    }
+                };
+
+                let width = image.width() as u16;
+                let height = image.height() as u16;
+
+                if width == 0 || height == 0 {
+                    return Err(raster::Error::Empty);
                 }
-            };
 
-            let width = image.width() as u16;
-            let height = image.height() as u16;
+                let mut buffer = vello_cpu::Pixmap::new(width, height);
 
-            if width == 0 || height == 0 {
-                return Err(raster::Error::Empty);
+                let src = image.as_raw();
+                let dst = buffer.data_as_u8_slice_mut();
+
+                for (src, dst) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+                    let src: [u8; 4] = src.try_into().unwrap();
+                    let dst: &mut [u8; 4] = dst.try_into().unwrap();
+
+                    let [b, g, r, a] = src;
+
+                    dst[0] = ((r as u16 * a as u16 + 127) / 255) as u8;
+                    dst[1] = ((g as u16 * a as u16 + 127) / 255) as u8;
+                    dst[2] = ((b as u16 * a as u16 + 127) / 255) as u8;
+                    dst[3] = a;
+                }
+
+                let pixels = Arc::new(buffer);
+
+                let _ = entry.insert(Some(Entry {
+                    width: image.width(),
+                    height: image.height(),
+                    pixels: pixels.clone(),
+                }));
+
+                let _ = self.hits.insert(id);
+
+                Ok(pixels)
             }
+            hash_map::Entry::Occupied(entry) => {
+                let _ = self.hits.insert(id);
 
-            let mut buffer = vello_cpu::Pixmap::new(width, height);
-
-            let src = image.as_raw();
-            let dst = buffer.data_as_u8_slice_mut();
-
-            for (src, dst) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-                let src: [u8; 4] = src.try_into().unwrap();
-                let dst: &mut [u8; 4] = dst.try_into().unwrap();
-
-                let [b, g, r, a] = src;
-
-                dst[0] = ((r as u16 * a as u16 + 127) / 255) as u8;
-                dst[1] = ((g as u16 * a as u16 + 127) / 255) as u8;
-                dst[2] = ((b as u16 * a as u16 + 127) / 255) as u8;
-                dst[3] = a;
+                Ok(entry
+                    .get()
+                    .as_ref()
+                    .map(|entry| entry.pixels.clone())
+                    .expect("Image should be allocated"))
             }
-
-            let _ = entry.insert(Some(Entry {
-                width: image.width(),
-                height: image.height(),
-                pixels: Arc::new(buffer),
-            }));
         }
-
-        let _ = self.hits.insert(id);
-
-        Ok(self
-            .entries
-            .get(&id)
-            .unwrap()
-            .as_ref()
-            .map(|entry| entry.pixels.clone())
-            .expect("Image should be allocated"))
     }
 
     fn trim(&mut self) {
