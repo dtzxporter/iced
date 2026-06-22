@@ -282,7 +282,9 @@ impl GlyphCache {
                 let width = image.placement.width as u16;
                 let height = image.placement.height as u16;
 
-                let mut buffer = vello_cpu::Pixmap::new(width, height);
+                // TODO: vello_cpu:multithreaded mode OOBs with empty pixmaps for whatever reason,
+                // So we ensure that at least a 1x1 is allocated, but it will be transparent due to the checks below.
+                let mut buffer = vello_cpu::Pixmap::new(width.max(1), height.max(1));
 
                 match image.content {
                     cosmic_text::SwashContent::Mask => {
