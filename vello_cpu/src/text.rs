@@ -210,7 +210,7 @@ fn draw(
                     vello_cpu::peniko::ImageBrush {
                         image: vello_cpu::ImageSource::Pixmap(pixmap),
                         sampler: vello_cpu::peniko::ImageSampler::new()
-                            .with_quality(vello_cpu::peniko::ImageQuality::Medium)
+                            .with_quality(vello_cpu::peniko::ImageQuality::Low)
                             .with_alpha(opacity),
                     },
                 ));
@@ -282,9 +282,13 @@ impl GlyphCache {
                 let width = image.placement.width as u16;
                 let height = image.placement.height as u16;
 
-                // TODO: vello_cpu:multithreaded mode OOBs with empty pixmaps for whatever reason,
-                // So we ensure that at least a 1x1 is allocated, but it will be transparent due to the checks below.
-                let mut buffer = vello_cpu::Pixmap::new(width.max(1), height.max(1));
+                // Padding pixels around the glyph.
+                const GLYPH_PADDING: u16 = 1;
+
+                // Padding fixes a bug with vello_cpus image sampler where it will sample pixels out of bounds.
+                // This also ensures the buffer is always allocated, which is required for vello_cpu/multithreaded.
+                let mut buffer =
+                    vello_cpu::Pixmap::new(width + GLYPH_PADDING * 2, height + GLYPH_PADDING * 2);
 
                 match image.content {
                     cosmic_text::SwashContent::Mask => {
@@ -294,8 +298,8 @@ impl GlyphCache {
                         for y in 0..height {
                             for x in 0..width {
                                 buffer.set_pixel(
-                                    x,
-                                    y,
+                                    x + GLYPH_PADDING,
+                                    y + GLYPH_PADDING,
                                     color
                                         .multiply_alpha(f32::from(image.data[i]) / 255.0)
                                         .to_rgba8(),
@@ -312,8 +316,8 @@ impl GlyphCache {
                             for x in 0..width {
                                 // TODO: Blend alpha
                                 buffer.set_pixel(
-                                    x,
-                                    y,
+                                    x + GLYPH_PADDING,
+                                    y + GLYPH_PADDING,
                                     vello_cpu::color::AlphaColor::from_rgba8(
                                         image.data[i + 2],
                                         image.data[i + 1],
@@ -335,10 +339,16 @@ impl GlyphCache {
 
                 let buffer = Arc::new(buffer);
 
-                let _ = entry.insert((buffer.clone(), image.placement));
+                let mut placement = image.placement;
+
+                // Adjust placement to compensate for pixmap padding.
+                placement.left -= GLYPH_PADDING as i32;
+                placement.top += GLYPH_PADDING as i32;
+
+                let _ = entry.insert((buffer.clone(), placement));
                 let _ = self.recently_used.insert(key);
 
-                Some((buffer, image.placement))
+                Some((buffer, placement))
             }
             hash_map::Entry::Occupied(entry) => {
                 let _ = self.recently_used.insert(key);
