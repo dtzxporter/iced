@@ -43,6 +43,7 @@ impl Pipeline {
         paragraph: &paragraph::Weak,
         position: Point,
         color: Color,
+        clip_bounds: Rectangle,
         renderer: &mut vello_cpu::RenderContext,
         transformation: Transformation,
     ) {
@@ -58,6 +59,7 @@ impl Pipeline {
             paragraph.buffer(),
             position,
             color,
+            clip_bounds,
             renderer,
             transformation,
         );
@@ -68,6 +70,7 @@ impl Pipeline {
         editor: &editor::Weak,
         position: Point,
         color: Color,
+        clip_bounds: Rectangle,
         renderer: &mut vello_cpu::RenderContext,
         transformation: Transformation,
     ) {
@@ -83,6 +86,7 @@ impl Pipeline {
             editor.buffer(),
             position,
             color,
+            clip_bounds,
             renderer,
             transformation,
         );
@@ -93,6 +97,7 @@ impl Pipeline {
         content: &str,
         bounds: Rectangle,
         color: Color,
+        clip_bounds: Rectangle,
         size: Pixels,
         line_height: Pixels,
         font: Font,
@@ -144,6 +149,7 @@ impl Pipeline {
             &entry.buffer,
             Point::new(x, y),
             color,
+            clip_bounds,
             renderer,
             transformation,
         );
@@ -154,6 +160,7 @@ impl Pipeline {
         buffer: &cosmic_text::Buffer,
         position: Point,
         color: Color,
+        clip_bounds: Rectangle,
         renderer: &mut vello_cpu::RenderContext,
         transformation: Transformation,
     ) {
@@ -165,6 +172,7 @@ impl Pipeline {
             buffer,
             position,
             color,
+            clip_bounds,
             renderer,
             transformation,
         );
@@ -182,6 +190,7 @@ fn draw(
     buffer: &cosmic_text::Buffer,
     position: Point,
     color: Color,
+    clip_bounds: Rectangle,
     renderer: &mut vello_cpu::RenderContext,
     transformation: Transformation,
 ) {
@@ -190,6 +199,17 @@ fn draw(
     let mut swash = cosmic_text::SwashCache::new();
 
     for run in buffer.layout_runs() {
+        let run_top = position.y + run.line_top * transformation.scale_factor();
+        let run_bottom = run_top + run.line_height * transformation.scale_factor();
+
+        if run_bottom <= clip_bounds.y {
+            continue;
+        }
+
+        if run_top >= (clip_bounds.y + clip_bounds.height) {
+            break;
+        }
+
         for glyph in run.glyphs {
             let physical_glyph =
                 glyph.physical((position.x, position.y), transformation.scale_factor());

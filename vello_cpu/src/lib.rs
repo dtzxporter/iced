@@ -239,6 +239,7 @@ impl Renderer {
                                 paragraph,
                                 *position,
                                 *color,
+                                clip_bounds,
                                 renderer,
                                 transformation,
                             );
@@ -267,6 +268,7 @@ impl Renderer {
                                 editor,
                                 *position,
                                 *color,
+                                clip_bounds,
                                 renderer,
                                 transformation,
                             );
@@ -308,6 +310,7 @@ impl Renderer {
                                 content,
                                 *bounds,
                                 *color,
+                                clip_bounds,
                                 *size,
                                 *line_height,
                                 *font,
@@ -345,6 +348,7 @@ impl Renderer {
                                 &buffer,
                                 raw.position,
                                 raw.color,
+                                clip_bounds,
                                 renderer,
                                 transformation,
                             );
