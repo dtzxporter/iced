@@ -146,67 +146,80 @@ impl editor::Editor for Editor {
 
         let cursor = match internal.editor.selection_bounds() {
             Some((start, end)) => {
-                let line_height = buffer.metrics().line_height;
-                let selected_lines = end.line - start.line + 1;
-
-                let visual_lines_offset = visual_lines_offset(start.line, buffer);
-
                 let regions = buffer
-                    .lines
-                    .iter()
-                    .skip(start.line)
-                    .take(selected_lines)
-                    .enumerate()
-                    .flat_map(|(i, line)| {
-                        highlight_line(
-                            line,
-                            if i == 0 { start.index } else { 0 },
-                            if i == selected_lines - 1 {
-                                end.index
-                            } else {
-                                line.text().len()
-                            },
-                        )
-                    })
-                    .enumerate()
-                    .filter_map(|(visual_line, (x, width))| {
-                        if width > 0.0 {
-                            Some(
-                                Rectangle {
-                                    x,
-                                    width,
-                                    y: (visual_line as i32 + visual_lines_offset) as f32
-                                        * line_height
-                                        - buffer.scroll().vertical,
-                                    height: line_height,
-                                } * (1.0 / internal.hint_factor),
-                            )
-                        } else {
-                            None
+                    .layout_runs()
+                    .filter_map(|run| {
+                        if run.line_i < start.line || run.line_i > end.line {
+                            return None;
                         }
+
+                        let line_from = if run.line_i == start.line {
+                            start.index
+                        } else {
+                            0
+                        };
+
+                        let line_to = if run.line_i == end.line {
+                            end.index
+                        } else {
+                            usize::MAX
+                        };
+
+                        let glyphs = run.glyphs;
+
+                        let run_start = glyphs.first().map(|g| g.start).unwrap_or(0);
+                        let run_end = glyphs.last().map(|g| g.end).unwrap_or(0);
+
+                        let range = run_start.max(line_from)..run_end.min(line_to);
+
+                        if range.is_empty() {
+                            return None;
+                        }
+
+                        let mut x = 0.0;
+                        let mut width = 0.0;
+
+                        for glyph in glyphs {
+                            if glyph.end <= range.start {
+                                x += glyph.w;
+                                continue;
+                            }
+
+                            if glyph.start >= range.end {
+                                break;
+                            }
+
+                            width += glyph.w;
+                        }
+
+                        Some(
+                            Rectangle {
+                                x,
+                                y: run.line_top - buffer.scroll().vertical,
+                                width,
+                                height: run.line_height,
+                            } * (1.0 / internal.hint_factor),
+                        )
                     })
                     .collect();
 
                 Selection::Range(regions)
             }
             _ => {
-                let line_height = buffer.metrics().line_height;
+                let mut previous_run: Option<(f32, f32)> = None;
+                let mut last_run: Option<(f32, f32)> = None;
 
-                let visual_lines_offset = visual_lines_offset(cursor.line, buffer);
+                let (x, y) = buffer
+                    .layout_runs()
+                    .find_map(|run| {
+                        if run.line_i != cursor.line {
+                            return None;
+                        }
 
-                let line = buffer
-                    .lines
-                    .get(cursor.line)
-                    .expect("Cursor line should be present");
+                        last_run = Some((run.line_w, run.line_top));
 
-                let layout = line.layout_opt().expect("Line layout should be cached");
-
-                let mut lines = layout.iter().enumerate();
-
-                let (visual_line, offset) = lines
-                    .find_map(|(i, line)| {
-                        let start = line.glyphs.first().map(|glyph| glyph.start).unwrap_or(0);
-                        let end = line.glyphs.last().map(|glyph| glyph.end).unwrap_or(0);
+                        let start = run.glyphs.first().map(|g| g.start).unwrap_or(0);
+                        let end = run.glyphs.last().map(|g| g.end).unwrap_or(0);
 
                         let is_cursor_before_start = start > cursor.index;
 
@@ -216,38 +229,29 @@ impl editor::Editor for Editor {
                         };
 
                         if is_cursor_before_start {
-                            // Sometimes, the glyph we are looking for is right
-                            // between lines. This can happen when a line wraps
-                            // on a space.
-                            // In that case, we can assume the cursor is at the
-                            // end of the previous line.
-                            // i is guaranteed to be > 0 because `start` is always
-                            // 0 for the first line, so there is no way for the
-                            // cursor to be before it.
-                            Some((i - 1, layout[i - 1].w))
-                        } else if is_cursor_before_end {
-                            let offset = line
+                            return Some(previous_run.unwrap_or((0.0, run.line_top)));
+                        }
+
+                        if is_cursor_before_end {
+                            let x = run
                                 .glyphs
                                 .iter()
-                                .take_while(|glyph| cursor.index > glyph.start)
-                                .map(|glyph| glyph.w)
+                                .take_while(|g| cursor.index > g.start)
+                                .map(|g| g.w)
                                 .sum();
 
-                            Some((i, offset))
-                        } else {
-                            None
+                            return Some((x, run.line_top));
                         }
+
+                        previous_run = Some((run.line_w, run.line_top));
+
+                        None
                     })
-                    .unwrap_or((
-                        layout.len().saturating_sub(1),
-                        layout.last().map(|line| line.w).unwrap_or(0.0),
-                    ));
+                    .unwrap_or_else(|| last_run.expect("cursor line should have a layout run"));
 
                 Selection::Caret(Point::new(
-                    offset / internal.hint_factor,
-                    ((visual_lines_offset + visual_line as i32) as f32 * line_height
-                        - buffer.scroll().vertical)
-                        / internal.hint_factor,
+                    x / internal.hint_factor,
+                    (y - buffer.scroll().vertical) / internal.hint_factor,
                 ))
             }
         };
@@ -748,67 +752,6 @@ impl PartialEq for Weak {
             _ => false,
         }
     }
-}
-
-fn highlight_line(
-    line: &cosmic_text::BufferLine,
-    from: usize,
-    to: usize,
-) -> impl Iterator<Item = (f32, f32)> + '_ {
-    let layout = line.layout_opt().map(Vec::as_slice).unwrap_or_default();
-
-    layout.iter().map(move |visual_line| {
-        let start = visual_line
-            .glyphs
-            .first()
-            .map(|glyph| glyph.start)
-            .unwrap_or(0);
-        let end = visual_line
-            .glyphs
-            .last()
-            .map(|glyph| glyph.end)
-            .unwrap_or(0);
-
-        let range = start.max(from)..end.min(to);
-
-        if range.is_empty() {
-            (0.0, 0.0)
-        } else if range.start == start && range.end == end {
-            (0.0, visual_line.w)
-        } else {
-            let first_glyph = visual_line
-                .glyphs
-                .iter()
-                .position(|glyph| range.start <= glyph.start)
-                .unwrap_or(0);
-
-            let mut glyphs = visual_line.glyphs.iter();
-
-            let x = glyphs.by_ref().take(first_glyph).map(|glyph| glyph.w).sum();
-
-            let width: f32 = glyphs
-                .take_while(|glyph| range.end > glyph.start)
-                .map(|glyph| glyph.w)
-                .sum();
-
-            (x, width)
-        }
-    })
-}
-
-fn visual_lines_offset(line: usize, buffer: &cosmic_text::Buffer) -> i32 {
-    let scroll = buffer.scroll();
-
-    let start = scroll.line.min(line);
-    let end = scroll.line.max(line);
-
-    let visual_lines_offset: usize = buffer.lines[start..]
-        .iter()
-        .take(end - start)
-        .map(|line| line.layout_opt().map(Vec::len).unwrap_or_default())
-        .sum();
-
-    visual_lines_offset as i32 * if scroll.line < line { 1 } else { -1 }
 }
 
 fn to_motion(motion: Motion) -> cosmic_text::Motion {
