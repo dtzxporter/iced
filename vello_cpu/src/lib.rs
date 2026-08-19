@@ -723,7 +723,9 @@ impl graphics::Compositor for Compositor {
             )
             .expect("Resize surface");
 
-        surface.renderer = vello_cpu::RenderContext::new(width as u16, height as u16);
+        surface
+            .renderer
+            .reset_and_resize(width as u16, height as u16);
     }
 
     fn information(&self) -> compositor::Information {
@@ -750,12 +752,20 @@ impl graphics::Compositor for Compositor {
         renderer.draw(&mut surface.renderer, viewport, background_color);
         surface.renderer.flush();
 
-        surface.renderer.render_to_buffer(
-            &mut surface.resources,
-            bytemuck::cast_slice_mut(&mut buffer),
+        let pixmap = vello_cpu::PixmapMut::new(
             surface.renderer.width(),
             surface.renderer.height(),
-            vello_cpu::RenderMode::OptimizeSpeed,
+            bytemuck::cast_slice_mut(&mut buffer),
+        )
+        .unwrap();
+
+        surface.renderer.render_with(
+            pixmap,
+            &mut surface.resources,
+            vello_cpu::RasterizerSettings {
+                render_mode: vello_cpu::RenderMode::OptimizeSpeed,
+                ..Default::default()
+            },
         );
 
         on_pre_present();
@@ -815,12 +825,20 @@ fn screenshot(renderer: &mut Renderer, viewport: &Viewport, background_color: Co
     let mut screenshot =
         vec![0; (viewport.physical_width() * viewport.physical_height()) as usize * 4];
 
-    vello.render_to_buffer(
-        &mut vello_cpu::Resources::new(),
-        &mut screenshot,
+    let pixmap = vello_cpu::PixmapMut::new(
         viewport.physical_width() as u16,
         viewport.physical_height() as u16,
-        vello_cpu::RenderMode::OptimizeQuality,
+        &mut screenshot,
+    )
+    .unwrap();
+
+    vello.render_with(
+        pixmap,
+        &mut vello_cpu::Resources::new(),
+        vello_cpu::RasterizerSettings {
+            render_mode: vello_cpu::RenderMode::OptimizeQuality,
+            ..Default::default()
+        },
     );
 
     for i in 0..screenshot.len() / 4 {
