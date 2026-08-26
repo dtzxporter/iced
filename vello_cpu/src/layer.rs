@@ -29,6 +29,11 @@ impl Layer {
         transformation: Transformation,
     ) {
         quad.bounds = quad.bounds * transformation;
+
+        if quad.snap {
+            quad.bounds = quad.bounds.round();
+        }
+
         self.quads.push((quad, background));
     }
 
